@@ -1,5 +1,5 @@
 from typing import List, Union, Optional
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 
@@ -40,7 +40,11 @@ class Settings(BaseSettings):
             return [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, list):
             return v
-        return ["http://localhost:5173", "http://127.0.0.1:5173"]
+    @model_validator(mode="after")
+    def adjust_cookie_security(self) -> "Settings":
+        if self.COOKIE_SAMESITE.lower() == "none":
+            self.COOKIE_SECURE = True
+        return self
 
     # Storage & Upload limits
     STORAGE_BACKEND: str = "local"  # "local", "supabase", "mock"

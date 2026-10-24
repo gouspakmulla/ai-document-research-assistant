@@ -20,7 +20,6 @@ class User(Base, TimestampMixin):
     email: Mapped[str] = mapped_column(
         String(255),
         unique=True,
-        index=True,
         nullable=False
     )
     hashed_password: Mapped[str] = mapped_column(

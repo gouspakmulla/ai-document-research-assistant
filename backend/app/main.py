@@ -58,5 +58,11 @@ app.include_router(chat.router, prefix=API_PREFIX)
 app.include_router(search.router, prefix=API_PREFIX)
 app.include_router(stats.router, prefix=API_PREFIX)
 
-# Also expose health check at root
+# Also expose routes at root for resilience and direct domain routing
 app.include_router(health.router, prefix="")
+app.include_router(auth.router, prefix="")
+app.include_router(documents.router, prefix="")
+app.include_router(collections.router, prefix="")
+app.include_router(chat.router, prefix="")
+app.include_router(search.router, prefix="")
+app.include_router(stats.router, prefix="")

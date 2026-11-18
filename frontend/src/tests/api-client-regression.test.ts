@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { api, devMockStorage } from '@/lib/apiClient'
+import { api, devMockStorage, getNormalizedApiBaseUrl } from '@/lib/apiClient'
 
 describe('ApiClient Backend Offline & Error Handling Regression Tests', () => {
   beforeEach(() => {
@@ -91,5 +91,19 @@ describe('ApiClient Backend Offline & Error Handling Regression Tests', () => {
     const docs = await api.getDocuments()
     expect(docs).toEqual([])
     expect(docs.find((d) => d.filename.includes('Attention_Is_All_You_Need'))).toBeUndefined()
+  })
+
+  it('normalizes VITE_API_URL so host without /api/v1 automatically appends /api/v1', () => {
+    expect(getNormalizedApiBaseUrl('https://ai-document-research-assistant.onrender.com')).toBe(
+      'https://ai-document-research-assistant.onrender.com/api/v1'
+    )
+    expect(getNormalizedApiBaseUrl('https://ai-document-research-assistant.onrender.com/')).toBe(
+      'https://ai-document-research-assistant.onrender.com/api/v1'
+    )
+    expect(getNormalizedApiBaseUrl('https://ai-document-research-assistant.onrender.com/api/v1')).toBe(
+      'https://ai-document-research-assistant.onrender.com/api/v1'
+    )
+    expect(getNormalizedApiBaseUrl('/api/v1')).toBe('/api/v1')
+    expect(getNormalizedApiBaseUrl('')).toBe('/api/v1')
   })
 })

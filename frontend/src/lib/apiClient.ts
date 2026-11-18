@@ -11,7 +11,18 @@ import type {
   AskQuestionResponse,
 } from '@/types'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+const rawApiUrl = (import.meta.env.VITE_API_URL as string | undefined) || '/api/v1'
+
+export function getNormalizedApiBaseUrl(raw: string): string {
+  const trimmed = raw.trim().replace(/\/+$/, '')
+  // If user provided host/origin without path (e.g. "https://my-backend.onrender.com"), append /api/v1
+  if (/^https?:\/\/[^/]+$/.test(trimmed)) {
+    return `${trimmed}/api/v1`
+  }
+  return trimmed || '/api/v1'
+}
+
+const API_BASE_URL = getNormalizedApiBaseUrl(rawApiUrl)
 
 // Lightweight in-memory storage for test isolation and session state
 class DevMockStorage {

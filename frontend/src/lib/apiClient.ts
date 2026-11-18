@@ -236,7 +236,7 @@ class ApiClient {
     return null
   }
 
-  private async getHeaders(customHeaders: Record<string, string> = {}): Promise<HeadersInit> {
+  private async getHeaders(customHeaders: Record<string, string> = {}, requireCsrf = false): Promise<HeadersInit> {
     const headers: Record<string, string> = {
       ...customHeaders,
     }
@@ -244,11 +244,14 @@ class ApiClient {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
-    if (!this.csrfToken) {
-      await this.fetchCsrfToken()
-    }
-    if (this.csrfToken) {
-      headers['X-CSRF-Token'] = this.csrfToken
+    // Only fetch/attach CSRF token if mutating request requires it AND no Bearer token is present
+    if (requireCsrf && !token) {
+      if (!this.csrfToken) {
+        await this.fetchCsrfToken()
+      }
+      if (this.csrfToken) {
+        headers['X-CSRF-Token'] = this.csrfToken
+      }
     }
     return headers
   }
@@ -262,11 +265,13 @@ class ApiClient {
       })
       if (res.ok) {
         const u = (await res.json()) as User
-        if (u.token) {
-          this.setAuthToken(u.token)
+        const headerToken = res.headers?.get ? res.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') : null
+        const effectiveToken = u.token || headerToken || null
+        if (effectiveToken) {
+          this.setAuthToken(effectiveToken)
+          u.token = effectiveToken
         }
         devMockStorage.setUser(u)
-        await this.fetchCsrfToken()
         return u
       }
       if (res.status === 401 || res.status === 403) {
@@ -289,11 +294,13 @@ class ApiClient {
       })
       if (res.ok) {
         const u = (await res.json()) as User
-        if (u.token) {
-          this.setAuthToken(u.token)
+        const headerToken = res.headers?.get ? res.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') : null
+        const effectiveToken = u.token || headerToken || null
+        if (effectiveToken) {
+          this.setAuthToken(effectiveToken)
+          u.token = effectiveToken
         }
         devMockStorage.setUser(u)
-        await this.fetchCsrfToken()
         return u
       }
       const err = await res.json().catch(() => ({}))
@@ -313,11 +320,13 @@ class ApiClient {
       })
       if (res.ok) {
         const u = (await res.json()) as User
-        if (u.token) {
-          this.setAuthToken(u.token)
+        const headerToken = res.headers?.get ? res.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') : null
+        const effectiveToken = u.token || headerToken || null
+        if (effectiveToken) {
+          this.setAuthToken(effectiveToken)
+          u.token = effectiveToken
         }
         devMockStorage.setUser(u)
-        await this.fetchCsrfToken()
         return u
       }
       const err = await res.json().catch(() => ({}))

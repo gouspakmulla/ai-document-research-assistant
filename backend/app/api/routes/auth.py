@@ -43,6 +43,7 @@ async def register(
         full_name=payload.full_name,
     )
     token = set_session_cookie(response, user.id, user.email)
+    response.headers["Authorization"] = f"Bearer {token}"
     return UserResponse(
         id=user.id,
         email=user.email,
@@ -65,6 +66,7 @@ async def login(
         password=payload.password
     )
     token = set_session_cookie(response, user.id, user.email)
+    response.headers["Authorization"] = f"Bearer {token}"
     return UserResponse(
         id=user.id,
         email=user.email,

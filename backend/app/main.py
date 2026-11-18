@@ -11,6 +11,21 @@ from backend.app.api.routes import auth, documents, collections, chat, stats, he
 async def lifespan(app: FastAPI):
     # Startup: ensure upload storage directory exists
     os.makedirs(os.path.abspath(settings.STORAGE_DIR), exist_ok=True)
+    try:
+        from backend.app.db.session import AsyncSessionLocal
+        from backend.app.repositories.user_repo import UserRepository
+        from backend.app.core.security import hash_password
+        async with AsyncSessionLocal() as session:
+            existing = await UserRepository.get_by_email(session, "researcher@example.com")
+            if not existing:
+                await UserRepository.create(
+                    session,
+                    email="researcher@example.com",
+                    hashed_password=hash_password("password123"),
+                    full_name="Dr. Jane Holloway",
+                )
+    except Exception:
+        pass
     yield
     # Shutdown
 

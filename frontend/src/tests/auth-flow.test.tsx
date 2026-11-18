@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { api, devMockStorage } from '@/lib/apiClient'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { UploadModal } from '@/features/documents/UploadModal'
+import { RegisterPage } from '@/pages/RegisterPage'
 import { User } from '@/types'
 
 const mockAuthUser: User = {
@@ -211,6 +212,63 @@ describe('Authentication and Upload Session Flow', () => {
     await waitFor(() => {
       expect(screen.getByTestId('auth-state').textContent).toBe('logged-out')
       expect(screen.getByTestId('user-email').textContent).toBe('none')
+    })
+  })
+
+  it('validates RegisterPage form cleanly and registers without throwing ZodError', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input: any) => {
+      const url = String(input)
+      if (url.includes('/auth/me')) {
+        return Promise.resolve({ ok: false, status: 401 } as Response)
+      }
+      if (url.includes('/auth/register')) {
+        return Promise.resolve({
+          ok: true,
+          status: 201,
+          json: () => Promise.resolve(mockAuthUser),
+        } as Response)
+      }
+      if (url.includes('/auth/csrf')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ csrf_token: 'csrf-123' }),
+        } as Response)
+      }
+      return Promise.resolve({ ok: false, status: 404 } as Response)
+    })
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <RegisterPage />
+        </AuthProvider>
+      </MemoryRouter>
+    )
+
+    // Submit invalid form
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
+
+    // Validation messages should appear without throwing Uncaught ZodError
+    await waitFor(() => {
+      expect(screen.getByText(/please enter a valid email address/i)).toBeDefined()
+    })
+
+    // Fill valid data
+    fireEvent.change(screen.getByPlaceholderText('Dr. Elena Rostova'), {
+      target: { value: 'Dr. Jane Holloway' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('name@institution.edu'), {
+      target: { value: 'researcher@example.com' },
+    })
+    const passwordInputs = screen.getAllByPlaceholderText('••••••••')
+    fireEvent.change(passwordInputs[0], { target: { value: 'password123' } })
+    fireEvent.change(passwordInputs[1], { target: { value: 'password123' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
+
+    await waitFor(() => {
+      expect(devMockStorage.getUser()?.email).toBe('researcher@example.com')
     })
   })
 })

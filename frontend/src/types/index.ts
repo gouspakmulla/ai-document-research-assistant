@@ -13,6 +13,7 @@ export interface User {
   full_name: string | null
   is_active: boolean
   created_at: string
+  token?: string | null
 }
 
 export interface DocumentItem {

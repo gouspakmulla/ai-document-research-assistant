@@ -11,13 +11,16 @@ async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> User:
-    """Extract and authenticate current user via HttpOnly session cookie."""
+    """Extract and authenticate current user via HttpOnly session cookie, Bearer header, or token query param."""
     token = request.cookies.get(settings.SESSION_COOKIE_NAME)
     if not token:
-        # Also check Authorization header as fallback for API tools/testing
+        # Check Authorization header (Bearer token)
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.replace("Bearer ", "").strip()
+    if not token:
+        # Fallback to query parameter for streaming links
+        token = request.query_params.get("token")
 
     if not token:
         raise HTTPException(
@@ -46,6 +49,8 @@ async def get_current_user_optional(
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.replace("Bearer ", "").strip()
+    if not token:
+        token = request.query_params.get("token")
     if not token:
         return None
     return await AuthService.get_current_user(db, token)

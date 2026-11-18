@@ -9,6 +9,7 @@ class UserResponse(BaseModel):
     full_name: str | None = None
     is_active: bool = True
     created_at: datetime
+    token: str | None = None
 
 class UserRegisterRequest(BaseModel):
     email: EmailStr

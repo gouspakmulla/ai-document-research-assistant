@@ -42,8 +42,9 @@ class Settings(BaseSettings):
             return v
     @model_validator(mode="after")
     def adjust_cookie_security(self) -> "Settings":
-        if self.COOKIE_SAMESITE.lower() == "none":
+        if self.COOKIE_SAMESITE.lower() == "none" or self.ENVIRONMENT == "production":
             self.COOKIE_SECURE = True
+            self.COOKIE_SAMESITE = "none"
         return self
 
     # Storage & Upload limits

@@ -35,7 +35,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["X-CSRF-Token"],
+    expose_headers=["X-CSRF-Token", "Authorization"],
 )
 
 # Custom Validation Exception Handler

@@ -133,9 +133,48 @@ class DevMockStorage {
 
 export const devMockStorage = new DevMockStorage()
 
+const TOKEN_STORAGE_KEY = 'doc_assistant_token'
+
 class ApiClient {
   private csrfToken: string | null = null
+  private authToken: string | null = null
   public isDevFallbackActive = false
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      try {
+        this.authToken = localStorage.getItem(TOKEN_STORAGE_KEY)
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  getAuthToken(): string | null {
+    if (!this.authToken && typeof window !== 'undefined') {
+      try {
+        this.authToken = localStorage.getItem(TOKEN_STORAGE_KEY)
+      } catch {
+        // ignore
+      }
+    }
+    return this.authToken
+  }
+
+  setAuthToken(token: string | null) {
+    this.authToken = token
+    if (typeof window !== 'undefined') {
+      try {
+        if (token) {
+          localStorage.setItem(TOKEN_STORAGE_KEY, token)
+        } else {
+          localStorage.removeItem(TOKEN_STORAGE_KEY)
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   private buildUrl(path: string, params?: Record<string, string>): string {
     const isAbsolute = API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')
@@ -156,6 +195,7 @@ class ApiClient {
 
   private handleUnauthorized() {
     this.csrfToken = null
+    this.setAuthToken(null)
     devMockStorage.setUser(null)
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:unauthorized'))
@@ -173,7 +213,13 @@ class ApiClient {
 
   async fetchCsrfToken(): Promise<string | null> {
     try {
+      const headers: Record<string, string> = {}
+      const token = this.getAuthToken()
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
       const res = await fetch(this.buildUrl('/auth/csrf'), {
+        headers,
         credentials: 'include',
       })
       if (res.ok) {
@@ -191,11 +237,15 @@ class ApiClient {
   }
 
   private async getHeaders(customHeaders: Record<string, string> = {}): Promise<HeadersInit> {
-    if (!this.csrfToken) {
-      await this.fetchCsrfToken()
-    }
     const headers: Record<string, string> = {
       ...customHeaders,
+    }
+    const token = this.getAuthToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    if (!this.csrfToken) {
+      await this.fetchCsrfToken()
     }
     if (this.csrfToken) {
       headers['X-CSRF-Token'] = this.csrfToken
@@ -207,10 +257,14 @@ class ApiClient {
   async me(): Promise<User | null> {
     try {
       const res = await fetch(this.buildUrl('/auth/me'), {
+        headers: await this.getHeaders(),
         credentials: 'include',
       })
       if (res.ok) {
         const u = (await res.json()) as User
+        if (u.token) {
+          this.setAuthToken(u.token)
+        }
         devMockStorage.setUser(u)
         await this.fetchCsrfToken()
         return u
@@ -235,6 +289,9 @@ class ApiClient {
       })
       if (res.ok) {
         const u = (await res.json()) as User
+        if (u.token) {
+          this.setAuthToken(u.token)
+        }
         devMockStorage.setUser(u)
         await this.fetchCsrfToken()
         return u
@@ -256,6 +313,9 @@ class ApiClient {
       })
       if (res.ok) {
         const u = (await res.json()) as User
+        if (u.token) {
+          this.setAuthToken(u.token)
+        }
         devMockStorage.setUser(u)
         await this.fetchCsrfToken()
         return u
@@ -284,7 +344,10 @@ class ApiClient {
   async getDocuments(search?: string): Promise<DocumentItem[]> {
     try {
       const url = this.buildUrl('/documents', search ? { search } : undefined)
-      const res = await fetch(url, { credentials: 'include' })
+      const res = await fetch(url, {
+        headers: await this.getHeaders(),
+        credentials: 'include',
+      })
       if (res.ok) return await res.json()
       if (res.status === 401 || res.status === 403) {
         this.handleUnauthorized()
@@ -302,7 +365,10 @@ class ApiClient {
 
   async getDocument(id: string): Promise<DocumentItem> {
     try {
-      const res = await fetch(this.buildUrl(`/documents/${id}`), { credentials: 'include' })
+      const res = await fetch(this.buildUrl(`/documents/${id}`), {
+        headers: await this.getHeaders(),
+        credentials: 'include',
+      })
       if (res.ok) return await res.json()
       if (res.status === 401 || res.status === 403) {
         this.handleUnauthorized()
@@ -315,12 +381,16 @@ class ApiClient {
   }
 
   getDocumentContentUrl(id: string): string {
-    return this.buildUrl(`/documents/${id}/content`)
+    const token = this.getAuthToken()
+    return this.buildUrl(`/documents/${id}/content`, token ? { token } : undefined)
   }
 
   async getDocumentChunks(id: string): Promise<any[]> {
     try {
-      const res = await fetch(this.buildUrl(`/documents/${id}/chunks`), { credentials: 'include' })
+      const res = await fetch(this.buildUrl(`/documents/${id}/chunks`), {
+        headers: await this.getHeaders(),
+        credentials: 'include',
+      })
       if (res.ok) return await res.json()
       if (res.status === 401 || res.status === 403) {
         this.handleUnauthorized()
@@ -389,7 +459,10 @@ class ApiClient {
   // --- Collection endpoints ---
   async getCollections(): Promise<CollectionItem[]> {
     try {
-      const res = await fetch(this.buildUrl('/collections'), { credentials: 'include' })
+      const res = await fetch(this.buildUrl('/collections'), {
+        headers: await this.getHeaders(),
+        credentials: 'include',
+      })
       if (res.ok) return await res.json()
       if (res.status === 401 || res.status === 403) {
         this.handleUnauthorized()
@@ -435,7 +508,10 @@ class ApiClient {
   // --- Conversation & Chat endpoints ---
   async getConversations(): Promise<ConversationItem[]> {
     try {
-      const res = await fetch(this.buildUrl('/chat/conversations'), { credentials: 'include' })
+      const res = await fetch(this.buildUrl('/chat/conversations'), {
+        headers: await this.getHeaders(),
+        credentials: 'include',
+      })
       if (res.ok) return await res.json()
       if (res.status === 401 || res.status === 403) {
         this.handleUnauthorized()
@@ -481,6 +557,7 @@ class ApiClient {
   async getMessages(conversationId: string): Promise<MessageItem[]> {
     try {
       const res = await fetch(this.buildUrl(`/chat/conversations/${conversationId}/messages`), {
+        headers: await this.getHeaders(),
         credentials: 'include',
       })
       if (res.ok) return await res.json()
@@ -551,7 +628,10 @@ class ApiClient {
   // --- Stats endpoint ---
   async getStats(): Promise<DashboardStats> {
     try {
-      const res = await fetch(this.buildUrl('/stats'), { credentials: 'include' })
+      const res = await fetch(this.buildUrl('/stats'), {
+        headers: await this.getHeaders(),
+        credentials: 'include',
+      })
       if (res.ok) return await res.json()
     } catch {
       // ignore
